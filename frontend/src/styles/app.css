@@ -1,0 +1,10 @@
+:root { font-family: system-ui, sans-serif; color: #243a35; background: #f5f7f4; }
+body { margin: 0; background: #f5f7f4; color: #243a35; }
+.cabecera { background: #174f46; color: #fff; border-bottom: 5px solid #d7e7aa; }
+.cabecera p { color: #e0ede8; }
+.marca { font-size: .85rem; font-weight: 800; letter-spacing: .18em; }
+.plato-card { border: 1px solid #dce5df; border-radius: 16px; box-shadow: 0 5px 18px #183d2f08; }
+.plato-categoria { color: #53675b; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.precio { font-size: 1.1rem; padding: .55rem .7rem; }
+.btn-primary { --bs-btn-bg: #205e50; --bs-btn-border-color: #205e50; --bs-btn-hover-bg: #17483d; --bs-btn-hover-border-color: #17483d; --bs-btn-active-bg: #123b32; --bs-btn-active-border-color: #123b32; --bs-btn-disabled-bg: #205e50; --bs-btn-disabled-border-color: #205e50; }
+.btn:focus-visible { outline: 3px solid #a66b00; outline-offset: 3px; }

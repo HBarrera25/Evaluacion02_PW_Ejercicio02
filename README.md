@@ -83,3 +83,36 @@ Un catálogo vacío devuelve `[]`. Un fallo de consulta devuelve HTTP 500 con
 
 `FRONTEND_URL` configura el origen permitido por CORS (por defecto
 `http://localhost:5173`). Esta ruta solo consulta; no modifica stock ni reservas.
+
+## Frontend del menú
+
+En una terminal mantener el backend encendido con `npm run dev` desde `backend`.
+En otra terminal, desde `frontend`, ejecutar `npm ci` y `npm run dev`.
+Abrir la dirección que muestre Vite (normalmente `http://localhost:5173`).
+Para generar la versión de producción, ejecutar `npm run build`.
+
+La API predeterminada es `http://localhost:3000/api`. Se puede configurar copiando
+`frontend/.env.example` a `frontend/.env` y cambiando `VITE_API_URL`.
+Si Vite utiliza otro puerto, ajustar `FRONTEND_URL` en el backend y reiniciarlo.
+
+`MenuDelDia.jsx` muestra el catálogo en una columna en móvil y tres desde el
+tamaño mediano. `PlatoCard.jsx` presenta categoría, nombre, precio, stock y el
+botón de añadir, que muestra “Agotado” cuando el stock es cero.
+Se incluyen estados de carga, catálogo vacío, errores y reintento.
+
+### Integración de reservas
+
+`App.jsx` consulta el menú y `GET /api/reserva`. Si la ruta de reservas todavía
+no existe, muestra el catálogo y un aviso, con los botones de añadir desactivados.
+No crea reservas ni saldo ficticios. Los servicios de reservas corresponden a
+los otros módulos del equipo.
+
+Cuando se integre la API, la reserva debe devolver `saldo`, `total` e
+`itemsReservados`; opcionalmente `estado`. Un estado distinto de `activa`
+deshabilita añadir. Si no se incluye estado, se asume activa siguiendo el formato
+mínimo del enunciado.
+
+Añadir envía `{ alimentoId, cantidad: 1 }` a `POST /api/reserva/agregar`, bloquea
+envíos simultáneos y vuelve a consultar menú y reserva. Los errores del servidor
+se muestran con `UncontrolledAlert`. Al integrar el carrito, estos datos y
+acciones pueden moverse al hook compartido `useReserva.js`.
