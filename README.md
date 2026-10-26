@@ -56,3 +56,30 @@ SELECT * FROM public.usuarios ORDER BY id;
 
 Si las tablas no aparecen, actualizar la conexión con **Refresh / Actualizar**.
 La contraseña permanece en `.env`, que está excluido de Git.
+
+## API del menú
+
+Con PostgreSQL iniciado y `backend/.env` configurado, ejecutar desde `backend`:
+
+```sh
+npm run dev
+```
+
+Para arrancar sin reinicio automático, usar `npm start`.
+El servidor verifica la conexión a la base antes de escuchar peticiones.
+El puerto predeterminado es 3000; se puede cambiar mediante `PORT`.
+
+Abrir `http://localhost:3000/api/menu` en el navegador o consultar:
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/menu
+```
+
+`GET /api/menu` devuelve HTTP 200 y un arreglo de alimentos ordenados por ID.
+Cada objeto contiene `id`, `nombre`, `precio` numérico, `stock` y `categoria`.
+Incluye los alimentos con stock cero para mostrar “Agotado” en el frontend.
+Un catálogo vacío devuelve `[]`. Un fallo de consulta devuelve HTTP 500 con
+`{"mensaje":"No se pudo obtener el menú. Intenta nuevamente."}`.
+
+`FRONTEND_URL` configura el origen permitido por CORS (por defecto
+`http://localhost:5173`). Esta ruta solo consulta; no modifica stock ni reservas.
