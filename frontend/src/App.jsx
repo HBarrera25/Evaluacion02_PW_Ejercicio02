@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Badge, Container, UncontrolledAlert } from 'reactstrap';
 import MenuDelDia from './components/MenuDelDia.jsx';
 import ReservaActual from './components/ReservaActual.jsx';
-import { obtenerMenu, obtenerReserva, agregarAReserva } from './services/api.js';
+import {obtenerMenu, obtenerReserva, agregarAReserva, cambiarPorciones,
+  quitarDeReserva,} from './services/api.js';
 
 const dinero = new Intl.NumberFormat('es-SV', { style: 'currency', currency: 'USD' });
 
@@ -70,6 +71,43 @@ export default function App() {
     }
   }
 
+  async function modificarReserva(operacion) {
+  if (bloqueo.current || !reservaActiva) return;
+
+  bloqueo.current = true;
+  setProcesando(true);
+  setErrorAccion(null);
+
+  try {
+    await operacion();
+
+    const [nuevoMenu, nuevaReserva] = await Promise.all([
+      obtenerMenu(),
+      obtenerReserva(),
+    ]);
+
+    setMenu(nuevoMenu);
+    setReserva(nuevaReserva);
+  } catch (error) {
+    setErrorAccion({ mensaje: error.message });
+
+    // Reconsultar por si se guardó la operación,
+    // pero falló la actualización visual.
+    setIntento((valor) => valor + 1);
+  } finally {
+    bloqueo.current = false;
+    setProcesando(false);
+  }
+}
+
+function cambiarCantidad(alimentoId, cambio) {
+  return modificarReserva(() => cambiarPorciones(alimentoId, cambio));
+}
+
+function quitarPlato(alimentoId) {
+  return modificarReserva(() => quitarDeReserva(alimentoId));
+}
+
   return (
     <>
       <header className="cabecera">
@@ -94,7 +132,8 @@ export default function App() {
         <MenuDelDia platos={menu} cargando={cargando} error={errorMenu}
           procesando={procesando} reservaActiva={reservaActiva}
           onAgregar={agregarPlato} onReintentar={() => setIntento((valor) => valor + 1)} />
-        <ReservaActual reserva={reserva} />
+        <ReservaActual reserva={reserva} procesando={procesando} onCambiar={cambiarCantidad}
+  onQuitar={quitarPlato}/>
       </Container>
       <footer className="text-center text-secondary py-4">Food DEI · Menú sujeto a disponibilidad</footer>
     </>
