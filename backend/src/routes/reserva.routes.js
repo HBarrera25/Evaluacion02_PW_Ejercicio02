@@ -7,6 +7,10 @@ import {
   cambiar,
   quitar,
 } from '../controllers/porciones.controller.js';
+import {
+  iniciar,
+  expirar,
+} from '../controllers/cicloReserva.controller.js';
 
 const router = Router();
 router.get('/', consultar);
@@ -14,4 +18,6 @@ router.post('/agregar', agregar);
 router.patch('/porciones', cambiar);
 router.delete('/items/:alimentoId', quitar);
 
+
 export default router;
+
