@@ -1,68 +1,118 @@
-# Food DEI — confirmación y cobro de reservas
+# Evaluacion02_PW_Ejercicio02
+EVALUACION 02 PW: Desarrollo de Aplicaciones Web con Integración Frontend- Backend
 
-Implementación del alcance del integrante 5: confirmar una reserva activa,
-cobrarla una sola vez dentro de una transacción PostgreSQL y mostrar el saldo
-disponible en el frontend.
+## PostgreSQL local
 
-## Archivos de esta entrega
+Requisitos: PostgreSQL en ejecución, Node.js 22.12 o superior y npm.
 
-- `backend/src/services/confirmacion.service.js`: valida la reserva, saldo,
-  presupuesto diario y vencimiento; actualiza el estado y descuenta el saldo
-  en una transacción. No modifica inventario.
-- `backend/src/controllers/confirmacion.controller.js`: expone el usuario de
-  demostración del seed (`id = 1`) y traduce errores a respuestas HTTP.
-- `backend/src/routes/reserva.routes.js`: registra `POST /confirmar`; el
-  servidor debe montar este router bajo `/api/reserva`.
-- `frontend/src/services/api.js`: servicio HTTP compartido, incluida la llamada
-  de confirmación.
-- `frontend/src/components/PanelUsuario.jsx`: muestra saldo, total y acción de
-  confirmar.
-- `frontend/src/App.jsx`: integración de confirmación. Recibe por props el
-  estado y los callbacks de la aplicación que proporcionan los integrantes
-  anteriores.
+1. Desde `backend`, ejecutar `npm ci`.
+2. Copiar `.env.example` como `.env` y completar las credenciales locales.
+3. Usar `DB_NAME=food_dei`. El usuario necesita permiso para crear bases de datos
+   si la base todavía no existe.
+4. Ejecutar `npm run db:setup` desde `backend`.
 
-## Contratos de integración
+El comando crea la base si no existe, ejecuta `database/schema.sql` y después
+`database/seed.sql`. Si encuentra tablas en el esquema `public`, se detiene para
+no sobrescribir información. Se utiliza una vez sobre una base nueva/vacía.
+Los scripts SQL también pueden ejecutarse desde DBeaver, en ese mismo orden,
+conectado a una base vacía. No volver a ejecutar el seed sobre datos existentes.
 
-El backend presupone `pool` exportado desde `backend/src/config/db.js` y las
-tablas `usuarios`, `reservas` y `reserva_items` descritas por el proyecto. El
-router usa Express y debe componerse con las rutas de reservas existentes, sin
-reemplazarlas.
+### Modelo
 
-La respuesta de `GET /api/reserva` debe incluir `id`, `estado`, `saldo`,
-`total` e `itemsReservados`. El componente `App` recibe `reserva`,
-`setReserva`, `reservaActiva`, `procesando`, `setProcesando`, `bloqueo`
-(referencia compartida), `setErrorAccion`, `setAvisoReserva`, `setIntento`,
-`setMenu` y, opcionalmente, `onIniciarNuevaReserva`. La validez de
-`reservaActiva` debe contemplar `expiraEn`.
+- `usuarios`: saldo mensual y presupuesto diario, ambos no negativos.
+- `alimentos`: nombre, categoría, precio positivo y stock no negativo.
+- `reservas`: usuario, estado y fechas de creación, vencimiento y confirmación.
+  Solo permite una reserva activa por usuario.
+- `reserva_items`: relación entre reserva y alimento, cantidad positiva y precio
+  unitario conservado. Un alimento aparece una sola vez por reserva.
 
-Configura `VITE_API_URL` con la URL base de la API; por defecto se usa
-`http://localhost:3000/api`.
+Datos iniciales: un usuario con saldo mensual de $100 y presupuesto diario de
+$25, y ocho alimentos. El flan comienza sin stock para demostrar “Agotado”.
+Las tablas de reservas comienzan vacías.
 
-## Ejecución y validación del backend
+El stock representa porciones disponibles. Los servicios de reserva deben
+retenerlo al agregar y devolverlo al quitar o vencer, usando transacciones.
+Confirmar realiza el cobro definitivo sin descontar el stock por segunda vez.
+El total se calcula con SUM(cantidad * precio_unitario). El dinero se almacena
+como NUMERIC(10,2); pg devuelve estos valores como texto para preservar precisión.
+La expiración automática y el control del gasto diario requieren los servicios
+del backend: las tablas por sí solas no ejecutan esas operaciones.
 
-Desde `backend/`:
+### Ver la base en DBeaver
 
-```bash
-npm install
-npm test
+1. Seleccionar **Nueva conexión de base de datos** y elegir **PostgreSQL**.
+2. Completar host `localhost`, puerto `5432`, base de datos `food_dei`, y el
+   usuario/contraseña configurados en `backend/.env`.
+3. Pulsar **Probar conexión**. Si solicita el controlador, descargarlo.
+4. Pulsar **Finalizar** y expandir la conexión: **Schemas > public > Tables**.
+5. Abrir `alimentos` y seleccionar la pestaña **Datos / Data**.
+
+En un editor SQL de esa conexión se puede ejecutar:
+
+```sql
+SELECT * FROM public.alimentos ORDER BY id;
+SELECT * FROM public.usuarios ORDER BY id;
 ```
 
-La configuración de PostgreSQL usa `DATABASE_URL`. En un entorno integrado,
-monta el router con:
+Si las tablas no aparecen, actualizar la conexión con **Refresh / Actualizar**.
+La contraseña permanece en `.env`, que está excluido de Git.
 
-```js
-app.use('/api/reserva', reservaRouter);
+## API del menú
+
+Con PostgreSQL iniciado y `backend/.env` configurado, ejecutar desde `backend`:
+
+```sh
+npm run dev
 ```
 
-El servicio crea el pool desde
-[backend/src/config/db.js](./backend/src/config/db.js); no abre conexiones
-para entradas inválidas y libera cada cliente después de confirmar o revertir
-la transacción.
+Para arrancar sin reinicio automático, usar `npm start`.
+El servidor verifica la conexión a la base antes de escuchar peticiones.
+El puerto predeterminado es 3000; se puede cambiar mediante `PORT`.
 
-Las pruebas incluidas cubren el rechazo temprano de `usuarioId` y
-`reservaId`. Las comprobaciones que requieren PostgreSQL deben ejecutarse con
-los seeds y los módulos de los integrantes anteriores.
+Abrir `http://localhost:3000/api/menu` en el navegador o consultar:
 
-Esta rama de origen no incluía el backend, el frontend ni sus dependencias, por
-lo que la integración final y las pruebas con PostgreSQL deben ejecutarse al
-combinar estos archivos con los módulos base del equipo.
+```powershell
+Invoke-RestMethod http://localhost:3000/api/menu
+```
+
+`GET /api/menu` devuelve HTTP 200 y un arreglo de alimentos ordenados por ID.
+Cada objeto contiene `id`, `nombre`, `precio` numérico, `stock` y `categoria`.
+Incluye los alimentos con stock cero para mostrar “Agotado” en el frontend.
+Un catálogo vacío devuelve `[]`. Un fallo de consulta devuelve HTTP 500 con
+`{"mensaje":"No se pudo obtener el menú. Intenta nuevamente."}`.
+
+`FRONTEND_URL` configura el origen permitido por CORS (por defecto
+`http://localhost:5173`). Esta ruta solo consulta; no modifica stock ni reservas.
+
+## Frontend del menú
+
+En una terminal mantener el backend encendido con `npm run dev` desde `backend`.
+En otra terminal, desde `frontend`, ejecutar `npm ci` y `npm run dev`.
+Abrir la dirección que muestre Vite (normalmente `http://localhost:5173`).
+Para generar la versión de producción, ejecutar `npm run build`.
+
+La API predeterminada es `http://localhost:3000/api`. Se puede configurar copiando
+`frontend/.env.example` a `frontend/.env` y cambiando `VITE_API_URL`.
+Si Vite utiliza otro puerto, ajustar `FRONTEND_URL` en el backend y reiniciarlo.
+
+`MenuDelDia.jsx` muestra el catálogo en una columna en móvil y tres desde el
+tamaño mediano. `PlatoCard.jsx` presenta categoría, nombre, precio, stock y el
+botón de añadir, que muestra “Agotado” cuando el stock es cero.
+Se incluyen estados de carga, catálogo vacío, errores y reintento.
+
+### Integración de reservas
+
+`App.jsx` consulta el menú y `GET /api/reserva`. Si la ruta de reservas todavía
+no existe, muestra el catálogo y un aviso, con los botones de añadir desactivados.
+No crea reservas ni saldo ficticios. Los servicios de reservas corresponden a
+los otros módulos del equipo.
+
+Cuando se integre la API, la reserva debe devolver `saldo`, `total` e
+`itemsReservados`; opcionalmente `estado`. Un estado distinto de `activa`
+deshabilita añadir. Si no se incluye estado, se asume activa siguiendo el formato
+mínimo del enunciado.
+
+Añadir envía `{ alimentoId, cantidad: 1 }` a `POST /api/reserva/agregar`, bloquea
+envíos simultáneos y vuelve a consultar menú y reserva. Los errores del servidor
+se muestran con `UncontrolledAlert`. Al integrar el carrito, estos datos y
+acciones pueden moverse al hook compartido `useReserva.js`.

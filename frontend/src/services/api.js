@@ -1,41 +1,21 @@
-const API_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-).replace(/\/$/, '');
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
 
 async function solicitar(ruta, opciones = {}) {
   let respuesta;
-
   try {
-    respuesta = await fetch(API_URL + ruta, opciones);
+    respuesta = await fetch(`${API_URL}${ruta}`, opciones);
   } catch (error) {
-    if (error.name === 'AbortError') {
-      throw error;
-    }
-    throw new Error(
-      'No se pudo conectar con el servidor. Comprueba que el backend esté encendido.',
-    );
+    if (error.name === 'AbortError') throw error;
+    throw new Error('No se pudo conectar con el servidor. Comprueba que el backend esté encendido.');
   }
 
-  let datos;
-  try {
-    datos = await respuesta.json();
-  } catch {
-    datos = null;
-  }
-
+  const datos = await respuesta.json().catch(() => null);
   if (!respuesta.ok) {
-    const error = new Error(
-      datos?.mensaje ||
-      datos?.message ||
-      'No se pudo completar la solicitud.',
-    );
+    const error = new Error(datos?.mensaje || datos?.message || 'No se pudo completar la solicitud.');
     error.status = respuesta.status;
     throw error;
   }
-
-  if (datos === null) {
-    throw new Error('El servidor devolvió una respuesta inválida.');
-  }
+  if (datos === null) throw new Error('El servidor devolvió una respuesta inválida.');
   return datos;
 }
 
@@ -64,10 +44,9 @@ export function cambiarPorciones(alimentoId, cambio) {
 }
 
 export function quitarDeReserva(alimentoId) {
-  return solicitar(
-    '/reserva/items/' + encodeURIComponent(alimentoId),
-    { method: 'DELETE' },
-  );
+  return solicitar('/reserva/items/' + encodeURIComponent(alimentoId), {
+    method: 'DELETE',
+  });
 }
 
 export function iniciarReserva() {
