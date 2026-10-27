@@ -48,3 +48,19 @@ export function quitarDeReserva(alimentoId) {
     method: 'DELETE',
   });
 }
+
+export function iniciarReserva() {
+  return solicitar('/reserva/iniciar', { method: 'POST' });
+}
+
+export function sincronizarVencimiento() {
+  return solicitar('/reserva/expirar', { method: 'POST' });
+}
+
+export function confirmarReserva(reservaId) {
+  return solicitar('/reserva/confirmar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reservaId }),
+  });
+}

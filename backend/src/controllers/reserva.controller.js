@@ -2,6 +2,10 @@ import {
   iniciarReserva,
   expirarReservaUsuario,
 } from '../services/cicloReserva.service.js';
+import {
+  obtenerReserva as obtenerReservaActual,
+  agregarAReserva as agregarAlimento,
+} from '../services/reserva.service.js';
 
 const USUARIO_DEMO_ID = 1;
 
@@ -21,6 +25,24 @@ function responderError(res, error) {
 export async function iniciar(req, res) {
   try {
     const reserva = await iniciarReserva(USUARIO_DEMO_ID);
+    return res.json(reserva);
+  } catch (error) {
+    return responderError(res, error);
+  }
+}
+
+export async function consultar(req, res) {
+  try {
+    const reserva = await obtenerReservaActual(USUARIO_DEMO_ID);
+    return res.json(reserva);
+  } catch (error) {
+    return responderError(res, error);
+  }
+}
+
+export async function agregar(req, res) {
+  try {
+    const reserva = await agregarAlimento(USUARIO_DEMO_ID, req.body);
     return res.json(reserva);
   } catch (error) {
     return responderError(res, error);
