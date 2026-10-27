@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Badge, Container, UncontrolledAlert } from 'reactstrap';
 import MenuDelDia from './components/MenuDelDia.jsx';
+import ReservaActual from './components/ReservaActual.jsx';
 import { obtenerMenu, obtenerReserva, agregarAReserva } from './services/api.js';
 
 const dinero = new Intl.NumberFormat('es-SV', { style: 'currency', currency: 'USD' });
@@ -93,6 +94,7 @@ export default function App() {
         <MenuDelDia platos={menu} cargando={cargando} error={errorMenu}
           procesando={procesando} reservaActiva={reservaActiva}
           onAgregar={agregarPlato} onReintentar={() => setIntento((valor) => valor + 1)} />
+        <ReservaActual reserva={reserva} />
       </Container>
       <footer className="text-center text-secondary py-4">Food DEI · Menú sujeto a disponibilidad</footer>
     </>
