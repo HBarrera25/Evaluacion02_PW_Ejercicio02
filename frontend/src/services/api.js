@@ -34,3 +34,17 @@ export function agregarAReserva(item) {
     body: JSON.stringify(item),
   });
 }
+
+export function cambiarPorciones(alimentoId, cambio) {
+  return solicitar('/reserva/porciones', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alimentoId, cambio }),
+  });
+}
+
+export function quitarDeReserva(alimentoId) {
+  return solicitar('/reserva/items/' + encodeURIComponent(alimentoId), {
+    method: 'DELETE',
+  });
+}
