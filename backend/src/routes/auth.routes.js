@@ -1,7 +1,7 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { Router } from 'express';
-import { pool } from '../config/db.js';
+import { crearUsuario, buscarPorNombreUsuario, buscarPorSesion, crearSesion, eliminarSesion } from '../repositories/usuario.repository.js';
 
 const scrypt = promisify(scryptCallback);
 const router = Router();
@@ -24,11 +24,9 @@ export async function autenticar(req, res, next) {
   try {
     const token = (req.headers.cookie || '').split(';').map((s) => s.trim()).find((s) => s.startsWith(cookieNombre + '='))?.slice(cookieNombre.length + 1);
     if (!token || !/^[a-f0-9]{64}$/.test(token)) return res.status(401).json({ mensaje: 'Inicia sesión para continuar.' });
-    const { rows } = await pool.query(`SELECT u.id, u.nombre, u.nombre_usuario
-      FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
-      WHERE s.token_hash = $1 AND s.expira_en > clock_timestamp()`, [hashToken(token)]);
-    if (!rows.length) return res.status(401).json({ mensaje: 'Tu sesión terminó. Ingresa nuevamente.' });
-    req.usuario = rows[0];
+    const usuario = await buscarPorSesion(hashToken(token));
+    if (!usuario) return res.status(401).json({ mensaje: 'Tu sesión terminó. Ingresa nuevamente.' });
+    req.usuario = usuario;
     req.tokenHash = hashToken(token);
     next();
   } catch (error) { next(error); }
@@ -36,7 +34,7 @@ export async function autenticar(req, res, next) {
 
 async function abrirSesion(res, usuario) {
   const token = randomBytes(32).toString('hex');
-  await pool.query("INSERT INTO sesiones(token_hash, usuario_id, expira_en) VALUES ($1, $2, clock_timestamp() + interval '7 days')", [hashToken(token), usuario.id]);
+  await crearSesion(hashToken(token), usuario.id);
   res.cookie(cookieNombre, token, { ...cookieOpciones, maxAge: 7 * 86400000 });
   return publico(usuario);
 }
@@ -61,9 +59,8 @@ router.post('/registro', limitar, async (req, res, next) => {
     if (typeof password !== 'string' || password.length < 8 || password.length > 128) return res.status(400).json({ mensaje: 'La contraseña debe tener entre 8 y 128 caracteres.' });
     const sal = randomBytes(16).toString('hex');
     const derivada = await scrypt(password, sal, 64);
-    const { rows } = await pool.query(`INSERT INTO usuarios(nombre, nombre_usuario, password_hash, saldo_mensual, presupuesto_diario)
-      VALUES ($1, $2, $3, 100, 25) RETURNING id, nombre, nombre_usuario`, [nombre, nombreUsuario, `${sal}:${derivada.toString('hex')}`]);
-    res.status(201).json({ usuario: await abrirSesion(res, rows[0]) });
+    const usuario = await crearUsuario({ nombre, nombreUsuario, passwordHash: `${sal}:${derivada.toString('hex')}` });
+    res.status(201).json({ usuario: await abrirSesion(res, usuario) });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ mensaje: 'Ese nombre de usuario ya existe. Elige otro.' });
     next(error);
@@ -75,7 +72,7 @@ router.post('/ingresar', limitar, async (req, res, next) => {
     const nombreUsuario = typeof req.body?.nombreUsuario === 'string' ? req.body.nombreUsuario.trim().toLowerCase() : '';
     const password = req.body?.password;
     if (typeof password !== 'string' || password.length > 128 || !/^[a-z0-9_]{3,30}$/.test(nombreUsuario)) return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos.' });
-    const { rows: [usuario] } = await pool.query('SELECT id, nombre, nombre_usuario, password_hash FROM usuarios WHERE nombre_usuario = $1', [nombreUsuario]);
+    const usuario = await buscarPorNombreUsuario(nombreUsuario);
     const [sal, guardado] = (usuario?.password_hash || '00000000000000000000000000000000:' + '00'.repeat(64)).split(':');
     const derivada = await scrypt(password, sal, 64);
     if (!usuario || !timingSafeEqual(derivada, Buffer.from(guardado, 'hex'))) return res.status(401).json({ mensaje: 'Usuario o contraseña incorrectos.' });
@@ -85,7 +82,7 @@ router.post('/ingresar', limitar, async (req, res, next) => {
 router.get('/sesion', autenticar, (req, res) => res.json({ usuario: publico(req.usuario) }));
 router.post('/salir', autenticar, async (req, res, next) => {
   try {
-    await pool.query('DELETE FROM sesiones WHERE token_hash = $1', [req.tokenHash]);
+    await eliminarSesion(req.tokenHash);
     res.clearCookie(cookieNombre, cookieOpciones);
     res.json({ mensaje: 'Sesión cerrada.' });
   } catch (error) { next(error); }

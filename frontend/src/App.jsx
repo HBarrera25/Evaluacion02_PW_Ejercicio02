@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Col, Container, Row, UncontrolledAlert, Modal, ModalHeader } from 'reactstrap';
 import MenuDelDia from './components/MenuDelDia.jsx';
 import PanelUsuario from './components/PanelUsuario.jsx';
@@ -6,9 +6,9 @@ import ReservaActual from './components/ReservaActual.jsx';
 import Temporizador from './components/Temporizador.jsx';
 import Acceso from './components/Acceso.jsx';
 import Logo from './components/Logo.jsx';
+import useReserva from './hooks/useReserva.js';
 import {
-  consultarSesion, cerrarSesion, obtenerMenu, obtenerReserva, agregarAReserva, cambiarPorciones,
-  quitarDeReserva, confirmarReserva, iniciarReserva, sincronizarVencimiento,
+  consultarSesion, cerrarSesion, agregarAReserva, iniciarReserva,
 } from './services/api.js';
 
 const dinero = new Intl.NumberFormat('es-SV', { style: 'currency', currency: 'USD' });
@@ -62,81 +62,18 @@ export default function App() {
 
 function MenuUsuario({ usuario, onSalir, onAcceso, cargandoSesion }) {
   const [saliendo, setSaliendo] = useState(false);
-  const [menu, setMenu] = useState([]);
-  const [reserva, setReserva] = useState(null);
-  const [cargando, setCargando] = useState(true);
-  const [errorMenu, setErrorMenu] = useState('');
-  const [errorAccion, setErrorAccion] = useState(null);
-  const [procesando, setProcesando] = useState(false);
-  const [mensaje, setMensaje] = useState('');
-  const [intento, setIntento] = useState(0);
-  const [ahora, setAhora] = useState(Date.now());
-  const bloqueo = useRef(false);
-  const avisoId = useRef(0);
-
-  useEffect(() => {
-    const intervalo = setInterval(() => setAhora(Date.now()), 1000);
-    return () => clearInterval(intervalo);
-  }, []);
-
-  useEffect(() => {
-    const controlador = new AbortController();
-    async function cargar() {
-      setCargando(true);
-      setErrorMenu('');
-      try {
-        // La consulta de reserva libera stock vencido antes de leer el menú.
-        const actual = usuario ? await obtenerReserva(controlador.signal) : null;
-        const catalogo = await obtenerMenu(controlador.signal);
-        if (controlador.signal.aborted) return;
-        setReserva(actual);
-        setMenu(catalogo);
-      } catch (error) {
-        if (!controlador.signal.aborted) setErrorMenu(error.message);
-      } finally {
-        if (!controlador.signal.aborted) setCargando(false);
-      }
-    }
-    cargar();
-    return () => controlador.abort();
-  }, [intento, usuario]);
-
-  const ejecutar = useCallback(async (operacion) => {
-    if (bloqueo.current) return;
-    bloqueo.current = true;
-    setProcesando(true);
-    setErrorAccion(null);
-    setMensaje('');
-    try {
-      const resultado = await operacion();
-      const actual = await obtenerReserva();
-      const catalogo = await obtenerMenu();
-      setReserva(actual);
-      setMenu(catalogo);
-      setAhora(Date.now());
-      if (resultado?.mensaje) setMensaje(resultado.mensaje);
-    } catch (error) {
-      setErrorAccion({ id: ++avisoId.current, mensaje: error.message });
-      // Releer antes de repetir una operación cuya respuesta pudo perderse.
-      setIntento((valor) => valor + 1);
-    } finally {
-      bloqueo.current = false;
-      setProcesando(false);
-    }
-  }, []);
-
-  const vencida = reserva?.estado === 'activa' && new Date(reserva.expiraEn).getTime() <= ahora;
-  const reservaActiva = reserva?.estado === 'activa' && !vencida;
-  useEffect(() => {
-    if (vencida) ejecutar(sincronizarVencimiento);
-  }, [vencida, ahora, ejecutar]);
+  const {
+    menu, reserva, cargando, errorMenu, errorAccion, procesando, mensaje,
+    ahora, vencida, reservaActiva, mostrarError, reintentar,
+    iniciar, agregar, cambiar, quitar, confirmar,
+  } = useReserva(usuario);
 
   async function salir() {
     setSaliendo(true);
     try { await cerrarSesion(); onSalir(); }
     catch (error) {
       if (error.status === 401) onSalir();
-      else setErrorAccion({ id: ++avisoId.current, mensaje: error.message });
+      else mostrarError(error);
     } finally { setSaliendo(false); }
   }
   const deshabilitado = procesando || cargando || saliendo || Boolean(errorMenu);
@@ -175,7 +112,7 @@ function MenuUsuario({ usuario, onSalir, onAcceso, cargandoSesion }) {
             <p>{reserva.estado === 'expirada' || vencida
               ? 'El tiempo terminó. Tu reserva se cerró y sus porciones se liberaron. Puedes iniciar nuevamente.'
               : 'Inicia una nueva reserva para añadir platos.'}</p>
-            <Button color="primary" disabled={deshabilitado || vencida} onClick={() => ejecutar(iniciarReserva)}>
+            <Button color="primary" disabled={deshabilitado || vencida} onClick={iniciar}>
               {procesando ? 'Cargando...' : 'Iniciar nueva reserva'}
             </Button>
           </Alert>
@@ -187,15 +124,15 @@ function MenuUsuario({ usuario, onSalir, onAcceso, cargandoSesion }) {
             <MenuDelDia platos={menu} cargando={cargando} error={errorMenu}
               procesando={deshabilitado || cargandoSesion} reservaActiva={reservaActiva}
               onSolicitarAcceso={!usuario ? (item) => onAcceso(item) : undefined}
-              onAgregar={(item) => ejecutar(() => agregarAReserva(item))}
-              onReintentar={() => setIntento((valor) => valor + 1)} />
+              onAgregar={agregar}
+              onReintentar={reintentar} />
           </Col>
           {usuario && <Col xs="12" lg="4" tag="aside">
             <PanelUsuario usuario={usuario} key={reserva?.id ?? 'sin-reserva'} reserva={reserva} reservaActiva={reservaActiva} procesando={deshabilitado}
-              onConfirmar={() => ejecutar(() => confirmarReserva(reserva.id))} />
+              onConfirmar={confirmar} />
             <ReservaActual reserva={vencida ? { ...reserva, estado: 'expirada' } : reserva} procesando={deshabilitado}
-              onCambiar={(id, cantidad) => ejecutar(() => cambiarPorciones(id, cantidad))}
-              onQuitar={(id) => ejecutar(() => quitarDeReserva(id))} />
+              onCambiar={cambiar}
+              onQuitar={quitar} />
           </Col>}
         </Row>
       </Container>
