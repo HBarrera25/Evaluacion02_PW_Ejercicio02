@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+
+# Variables locales; conservar los ejemplos sin secretos
+.env
+.env.*
+!.env.example
+
+# Compilacion y cobertura
+dist/
+build/
+coverage/
+.vite/
+
+# Registros
+*.log
+npm-debug.log*
+
+# Archivos locales del sistema y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,24 @@
+:root { font-family: system-ui, sans-serif; color: #243a35; background: #f5f7f4; }
+body { margin: 0; background: #f5f7f4; color: #243a35; }
+.panel-saldo { position: sticky; top: 0; z-index: 10; }
+.cabecera { background: #174f46; color: #fff; border-bottom: 5px solid #d7e7aa; }
+.cabecera p { color: #e0ede8; }
+/* Conserva el diseño aprobado y oculta únicamente el margen blanco de la imagen. */
+.logo-food-dei { display: block; position: relative; width: 144px; aspect-ratio: 6 / 5; flex-shrink: 0; overflow: hidden; }
+.logo-food-dei img { position: absolute; width: 230%; max-width: none; height: auto; left: -65%; top: -42%; mix-blend-mode: multiply; }
+/* El fondo se integra con cada superficie; el encabezado usa una marca clara. */
+.cabecera .logo-food-dei img { filter: invert(1); mix-blend-mode: screen; }
+.acceso-card .logo-food-dei { margin-inline: auto; }
+.plato-card { border: 1px solid #dce5df; border-radius: 16px; box-shadow: 0 5px 18px #183d2f08; }
+.plato-foto { width: 100%; aspect-ratio: 3 / 2; flex-shrink: 0; border-radius: 15px 15px 0 0; background-color: #f0e7d9; background-size: 400% 200%; background-repeat: no-repeat; }
+.plato-foto-vacia { display: grid; place-items: center; color: #53675b; font-size: .85rem; }
+.plato-ver-foto { display: block; width: 100%; padding: 0; border: 0; border-radius: 15px 15px 0 0; background: transparent; cursor: pointer; }
+.plato-ver-nombre { border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+.plato-ver-detalle { align-self: flex-start; border: 0; padding: 0; background: transparent; color: #205e50; font-size: .85rem; text-decoration: underline; text-underline-offset: 3px; }
+.plato-ver-foto:focus-visible, .plato-ver-nombre:focus-visible, .plato-ver-detalle:focus-visible { outline: 3px solid #a66b00; outline-offset: 3px; }
+.plato-categoria { color: #53675b; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.precio { font-size: 1.1rem; padding: .55rem .7rem; }
+.btn-primary { --bs-btn-bg: #205e50; --bs-btn-border-color: #205e50; --bs-btn-hover-bg: #17483d; --bs-btn-hover-border-color: #17483d; --bs-btn-active-bg: #123b32; --bs-btn-active-border-color: #123b32; --bs-btn-disabled-bg: #205e50; --bs-btn-disabled-border-color: #205e50; }
+.btn:focus-visible { outline: 3px solid #a66b00; outline-offset: 3px; }
+
+.acceso-card { max-width: 480px; border-radius: 18px; box-shadow: 0 10px 35px #183d2f12; }
