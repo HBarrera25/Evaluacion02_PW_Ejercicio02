@@ -1,7 +1,10 @@
 import { pool } from '../config/db.js';
 import { consultarReserva } from '../repositories/reserva.repository.js';
 
-const DURACION_MINUTOS = 10;
+const DURACION_MINUTOS = Number(process.env.RESERVA_DURACION_MINUTOS || 5);
+if (!Number.isFinite(DURACION_MINUTOS) || DURACION_MINUTOS <= 0) {
+  throw new Error('RESERVA_DURACION_MINUTOS debe ser un número positivo');
+}
 
 function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
@@ -94,7 +97,7 @@ async function gestionarCiclo(usuarioId, crearNueva) {
           $1,
           'activa',
           CURRENT_TIMESTAMP,
-          CURRENT_TIMESTAMP + $2::integer * INTERVAL '1 minute'
+          CURRENT_TIMESTAMP + $2::numeric * INTERVAL '1 minute'
         WHERE NOT EXISTS (
           SELECT 1 FROM reservas
           WHERE usuario_id = $1 AND estado = 'activa'

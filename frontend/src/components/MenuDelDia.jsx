@@ -4,7 +4,7 @@ import PlatoCard from './PlatoCard.jsx';
 
 export default function MenuDelDia({
   platos = [], cargando = false, error = '', procesando = false,
-  reservaActiva = false, onAgregar, onReintentar,
+  reservaActiva = false, onAgregar, onReintentar, onSolicitarAcceso,
 }) {
   return (
     <section aria-labelledby="titulo-menu" aria-busy={cargando}>
@@ -28,7 +28,7 @@ export default function MenuDelDia({
           {platos.map((plato) => (
             <Col key={plato.id} xs="12" md="4">
               <PlatoCard plato={plato} onAgregar={onAgregar}
-                procesando={procesando} reservaActiva={reservaActiva} />
+                procesando={procesando} reservaActiva={reservaActiva} onSolicitarAcceso={onSolicitarAcceso} />
             </Col>
           ))}
         </Row>

@@ -19,6 +19,13 @@ export async function confirmarReserva(usuarioId, datos) {
     throw errorHttp(400, 'reservaId debe ser un entero positivo válido.');
   }
 
+  const nombreCliente = typeof datos.nombreCliente === 'string'
+    ? datos.nombreCliente.trim().replace(/\s+/g, ' ')
+    : '';
+  if (nombreCliente.length < 2 || nombreCliente.length > 100 || !/\p{L}/u.test(nombreCliente)) {
+    throw errorHttp(400, 'Escribe tu nombre (entre 2 y 100 caracteres).');
+  }
+
   const client = await pool.connect();
   let transaccionAbierta = false;
 
@@ -41,7 +48,7 @@ export async function confirmarReserva(usuarioId, datos) {
 
     const resultado = await client.query(
       `
-      SELECT id, estado
+      SELECT id, estado, nombre_cliente
       FROM reservas
       WHERE id = $1 AND usuario_id = $2
       FOR UPDATE
@@ -59,6 +66,7 @@ export async function confirmarReserva(usuarioId, datos) {
         reservaId,
         estado: 'confirmada',
         yaConfirmada: true,
+        nombreCliente: resultado.rows[0].nombre_cliente,
         saldo: Number(usuario.rows[0].saldo_mensual),
         mensaje: 'Esta reserva ya estaba confirmada. No se realizó otro cobro.',
       };
@@ -120,6 +128,7 @@ export async function confirmarReserva(usuarioId, datos) {
       )
       UPDATE reservas r
       SET estado = 'confirmada',
+          nombre_cliente = $2,
           confirmada_en = instante.ahora
       FROM instante
       WHERE r.id = $1
@@ -127,7 +136,7 @@ export async function confirmarReserva(usuarioId, datos) {
         AND r.expira_en > instante.ahora
       RETURNING r.confirmada_en
       `,
-      [reservaId],
+      [reservaId, nombreCliente],
     );
     if (!confirmada.rowCount) {
       throw errorHttp(409, 'La reserva venció antes de confirmarse.');
@@ -153,10 +162,11 @@ export async function confirmarReserva(usuarioId, datos) {
       reservaId,
       estado: 'confirmada',
       yaConfirmada: false,
+      nombreCliente,
       totalCobrado: Number(validacion.total),
       saldo: Number(cobro.rows[0].saldo_mensual),
       confirmadaEn: confirmada.rows[0].confirmada_en,
-      mensaje: 'Reserva confirmada y cobro realizado.',
+      mensaje: `Reserva confirmada a nombre de ${nombreCliente}. Cobro realizado.`,
     };
   } catch (error) {
     if (transaccionAbierta) {

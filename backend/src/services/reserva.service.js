@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { consultarReserva } from '../repositories/reserva.repository.js';
+import { expirarReservaUsuario } from './cicloReserva.service.js';
 
 function errorHttp(status, mensaje) {
   const error = new Error(mensaje);
@@ -8,7 +9,7 @@ function errorHttp(status, mensaje) {
 }
 
 export async function obtenerReserva(usuarioId) {
-  const reserva = await consultarReserva(pool, usuarioId);
+  const reserva = await expirarReservaUsuario(usuarioId);
   if (!reserva) throw errorHttp(404, 'Usuario no encontrado.');
   return reserva;
 }
@@ -46,7 +47,7 @@ export async function agregarAReserva(usuarioId, datos) {
     );
     if (!alimento.rowCount) throw errorHttp(404, 'El alimento no existe.');
     if (alimento.rows[0].stock < cantidad) {
-      throw errorHttp(409, 'No hay suficiente stock disponible.');
+      throw errorHttp(400, 'Stock insuficiente');
     }
 
     const anterior = await client.query(
@@ -88,10 +89,10 @@ export async function agregarAReserva(usuarioId, datos) {
     );
     const limites = validacion.rows[0];
     if (!limites.saldo_suficiente) {
-      throw errorHttp(409, 'Saldo mensual insuficiente.');
+      throw errorHttp(400, 'Saldo insuficiente para esta cantidad');
     }
     if (!limites.presupuesto_suficiente) {
-      throw errorHttp(409, 'La reserva supera tu presupuesto diario disponible.');
+      throw errorHttp(400, 'La reserva supera tu presupuesto diario disponible.');
     }
 
     // Verificar vigencia después de esperar los bloqueos.

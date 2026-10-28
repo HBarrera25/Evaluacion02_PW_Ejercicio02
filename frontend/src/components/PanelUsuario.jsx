@@ -17,6 +17,7 @@ export default function PanelUsuario({
   reservaActiva,
   procesando,
   onConfirmar,
+  usuario,
 }) {
   if (!reserva) {
     return null;
@@ -35,7 +36,7 @@ export default function PanelUsuario({
 
         <div className="d-flex flex-wrap justify-content-between gap-3 mb-3">
           <div>
-            <div className="text-secondary">Saldo mensual disponible</div>
+            <div className="text-secondary">Saldo disponible tras la reserva</div>
             <strong className="fs-4">
               {dinero.format(Number(reserva.saldo))}
             </strong>
@@ -54,19 +55,17 @@ export default function PanelUsuario({
 
         {confirmada ? (
           <Alert color="success" className="mb-0">
-            Esta reserva ya fue confirmada y cobrada.
+            {reserva.nombreCliente
+              ? <>Reserva confirmada a nombre de <strong>{reserva.nombreCliente}</strong>.</>
+              : 'Esta reserva ya fue confirmada y cobrada.'}
           </Alert>
         ) : (
           <>
             <p className="text-secondary">
-              El importe se descontará de tu saldo al confirmar.
+              El saldo disponible ya contempla esta reserva. El cobro definitivo se realiza al confirmar.
             </p>
-            <Button
-              type="button"
-              color="success"
-              disabled={!puedeConfirmar}
-              onClick={onConfirmar}
-            >
+            <p>Reserva a nombre de <strong>{usuario.nombre}</strong>.</p>
+            <Button type="button" color="success" disabled={!puedeConfirmar} onClick={onConfirmar}>
               {procesando ? 'Procesando...' : 'Confirmar reserva'}
             </Button>
             {reservaActiva && !tieneItems && (

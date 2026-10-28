@@ -1,9 +1,21 @@
 import {
   cambiarPorciones,
   quitarAlimento,
+  actualizarPorciones,
 } from '../services/porciones.service.js';
 
-const USUARIO_DEMO_ID = 1;
+
+
+export async function actualizar(req, res) {
+  try {
+    if (!/^[1-9]\d*$/.test(req.params.id)) {
+      return res.status(400).json({ mensaje: 'El identificador del alimento no es válido.' });
+    }
+    return res.json(await actualizarPorciones(req.usuario.id, Number(req.params.id), req.body?.cantidad));
+  } catch (error) {
+    return responderError(res, error);
+  }
+}
 
 function responderError(res, error) {
   const status = error.status || 500;
@@ -19,7 +31,7 @@ function responderError(res, error) {
 
 export async function cambiar(req, res) {
   try {
-    const reserva = await cambiarPorciones(USUARIO_DEMO_ID, req.body);
+    const reserva = await cambiarPorciones(req.usuario.id, req.body);
     return res.json(reserva);
   } catch (error) {
     return responderError(res, error);
@@ -28,14 +40,14 @@ export async function cambiar(req, res) {
 
 export async function quitar(req, res) {
   try {
-    const parametro = req.params.alimentoId;
+    const parametro = req.params.id ?? req.params.alimentoId;
     if (!/^[1-9]\d*$/.test(parametro)) {
       return res.status(400).json({
         mensaje: 'El identificador del alimento no es válido.',
       });
     }
     const reserva = await quitarAlimento(
-      USUARIO_DEMO_ID,
+      req.usuario.id,
       Number(parametro),
     );
     return res.json(reserva);
