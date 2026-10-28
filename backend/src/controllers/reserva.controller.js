@@ -7,7 +7,7 @@ import {
   agregarAReserva as agregarAlimento,
 } from '../services/reserva.service.js';
 
-const USUARIO_DEMO_ID = 1;
+
 
 function responderError(res, error) {
   const status = error.status || 500;
@@ -24,7 +24,7 @@ function responderError(res, error) {
 
 export async function iniciar(req, res) {
   try {
-    const reserva = await iniciarReserva(USUARIO_DEMO_ID);
+    const reserva = await iniciarReserva(req.usuario.id);
     return res.json(reserva);
   } catch (error) {
     return responderError(res, error);
@@ -33,7 +33,7 @@ export async function iniciar(req, res) {
 
 export async function consultar(req, res) {
   try {
-    const reserva = await obtenerReservaActual(USUARIO_DEMO_ID);
+    const reserva = await obtenerReservaActual(req.usuario.id);
     return res.json(reserva);
   } catch (error) {
     return responderError(res, error);
@@ -42,7 +42,7 @@ export async function consultar(req, res) {
 
 export async function agregar(req, res) {
   try {
-    const reserva = await agregarAlimento(USUARIO_DEMO_ID, req.body);
+    const reserva = await agregarAlimento(req.usuario.id, req.body);
     return res.json(reserva);
   } catch (error) {
     return responderError(res, error);
@@ -52,7 +52,7 @@ export async function agregar(req, res) {
 export async function expirar(req, res) {
   try {
     // El servicio no permite vencerla antes de su fecha.
-    const reserva = await expirarReservaUsuario(USUARIO_DEMO_ID);
+    const reserva = await expirarReservaUsuario(req.usuario.id);
     return res.json(reserva);
   } catch (error) {
     return responderError(res, error);

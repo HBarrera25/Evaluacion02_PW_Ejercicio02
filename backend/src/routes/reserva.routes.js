@@ -8,6 +8,7 @@ import {
 import {
   cambiar,
   quitar,
+  actualizar,
 } from '../controllers/porciones.controller.js';
 import { confirmar } from '../controllers/confirmacion.controller.js';
 
@@ -17,6 +18,8 @@ router.get('/', consultar);
 router.post('/iniciar', iniciar);
 router.post('/expirar', expirar);
 router.post('/agregar', agregar);
+router.put('/actualizar-porciones/:id', actualizar);
+router.delete('/eliminar/:id', quitar);
 router.patch('/porciones', cambiar);
 router.delete('/items/:alimentoId', quitar);
 router.post('/confirmar', confirmar);

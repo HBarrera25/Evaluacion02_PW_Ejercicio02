@@ -1,10 +1,10 @@
 import { confirmarReserva } from '../services/confirmacion.service.js';
 
-const USUARIO_DEMO_ID = 1;
+
 
 export async function confirmar(req, res) {
   try {
-    const resultado = await confirmarReserva(USUARIO_DEMO_ID, req.body);
+    const resultado = await confirmarReserva(req.usuario.id, { ...req.body, nombreCliente: req.usuario.nombre });
     return res.status(200).json(resultado);
   } catch (error) {
     const status = Number.isInteger(error.status) ? error.status : 500;

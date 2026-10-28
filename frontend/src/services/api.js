@@ -3,7 +3,7 @@ const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').re
 async function solicitar(ruta, opciones = {}) {
   let respuesta;
   try {
-    respuesta = await fetch(`${API_URL}${ruta}`, opciones);
+    respuesta = await fetch(`${API_URL}${ruta}`, { ...opciones, credentials: 'include' });
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     throw new Error('No se pudo conectar con el servidor. Comprueba que el backend esté encendido.');
@@ -13,10 +13,17 @@ async function solicitar(ruta, opciones = {}) {
   if (!respuesta.ok) {
     const error = new Error(datos?.mensaje || datos?.message || 'No se pudo completar la solicitud.');
     error.status = respuesta.status;
+    if (respuesta.status === 401 && !ruta.startsWith('/auth/')) window.dispatchEvent(new Event('sesion-expirada'));
     throw error;
   }
   if (datos === null) throw new Error('El servidor devolvió una respuesta inválida.');
   return datos;
+}
+
+export const consultarSesion = () => solicitar('/auth/sesion');
+export const cerrarSesion = () => solicitar('/auth/salir', { method: 'POST' });
+export function autenticarUsuario(modo, datos) {
+  return solicitar('/auth/' + modo, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
 }
 
 export function obtenerMenu(signal) {
@@ -35,16 +42,16 @@ export function agregarAReserva(item) {
   });
 }
 
-export function cambiarPorciones(alimentoId, cambio) {
-  return solicitar('/reserva/porciones', {
-    method: 'PATCH',
+export function cambiarPorciones(alimentoId, cantidad) {
+  return solicitar('/reserva/actualizar-porciones/' + encodeURIComponent(alimentoId), {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ alimentoId, cambio }),
+    body: JSON.stringify({ cantidad }),
   });
 }
 
 export function quitarDeReserva(alimentoId) {
-  return solicitar('/reserva/items/' + encodeURIComponent(alimentoId), {
+  return solicitar('/reserva/eliminar/' + encodeURIComponent(alimentoId), {
     method: 'DELETE',
   });
 }

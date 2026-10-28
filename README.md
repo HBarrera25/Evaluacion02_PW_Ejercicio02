@@ -100,19 +100,107 @@ tamaño mediano. `PlatoCard.jsx` presenta categoría, nombre, precio, stock y el
 botón de añadir, que muestra “Agotado” cuando el stock es cero.
 Se incluyen estados de carga, catálogo vacío, errores y reintento.
 
-### Integración de reservas
+### Reservas y vencimiento
 
-`App.jsx` consulta el menú y `GET /api/reserva`. Si la ruta de reservas todavía
-no existe, muestra el catálogo y un aviso, con los botones de añadir desactivados.
-No crea reservas ni saldo ficticios. Los servicios de reservas corresponden a
-los otros módulos del equipo.
+1. Crea tu cuenta o inicia sesión y pulsa **Iniciar nueva reserva**. El contador usa la fecha de vencimiento del servidor.
+2. Añade platos y ajusta las porciones con **+**, **−** o **Quitar** en el carrito lateral.
+3. El stock queda retenido temporalmente y el saldo disponible se actualiza al instante.
+4. Pulsa **Confirmar reserva**. Se guarda el nombre de tu cuenta con la compra y se cobra una sola vez, sin descontar stock nuevamente.
+5. Al vencer, el servidor devuelve las porciones automáticamente (revisión cada segundo),
+   incluso si se cierra el navegador. La interfaz permite iniciar otra reserva.
 
-Cuando se integre la API, la reserva debe devolver `saldo`, `total` e
-`itemsReservados`; opcionalmente `estado`. Un estado distinto de `activa`
-deshabilita añadir. Si no se incluye estado, se asume activa siguiendo el formato
-mínimo del enunciado.
+`RESERVA_DURACION_MINUTOS` configura el plazo (5 minutos por defecto).
+El saldo mensual inicial es $100 y el presupuesto diario es $25. La API distingue
+`saldoMensual` (saldo contable), `saldo` (descontando la reserva activa) y
+`presupuestoDisponible` (restando compras confirmadas de hoy y la reserva activa).
+El día se calcula en la zona `America/El_Salvador`. Las reservas cerradas conservan
+sus ítems como historial y no retienen nuevamente saldo ni stock.
 
-Añadir envía `{ alimentoId, cantidad: 1 }` a `POST /api/reserva/agregar`, bloquea
-envíos simultáneos y vuelve a consultar menú y reserva. Los errores del servidor
-se muestran con `UncontrolledAlert`. Al integrar el carrito, estos datos y
-acciones pueden moverse al hook compartido `useReserva.js`.
+### Rutas
+
+| Método | Ruta | Cuerpo / finalidad |
+| --- | --- | --- |
+| GET | `/api/menu` | Catálogo, precios y stock |
+| GET | `/api/reserva` | Reserva, saldo y presupuesto disponible |
+| POST | `/api/reserva/iniciar` | Iniciar o recuperar la reserva activa |
+| POST | `/api/reserva/agregar` | `{ "alimentoId": 1, "cantidad": 1 }` |
+| PUT | `/api/reserva/actualizar-porciones/:id` | `{ "cantidad": 2 }`, cantidad final; cero quita el plato |
+| DELETE | `/api/reserva/eliminar/:id` | Quitar todas las porciones y devolver stock |
+| POST | `/api/reserva/confirmar` | `{ "reservaId": 1 }`, confirmación idempotente |
+| POST | `/api/reserva/expirar` | Sincronizar vencimiento; no permite anticiparlo |
+
+Stock insuficiente devuelve HTTP 400 y `Stock insuficiente`. Aumentar porciones
+por encima del saldo devuelve HTTP 400 y `Saldo insuficiente para esta cantidad`.
+Superar el presupuesto diario también devuelve HTTP 400, con su propio mensaje.
+Modificar una reserva vencida o confirmar una vacía devuelve HTTP 409.
+Se conservan las rutas antiguas PATCH `/api/reserva/porciones` y DELETE
+`/api/reserva/items/:alimentoId` por compatibilidad.
+
+### Pruebas
+
+Desde `backend`, con `.env` configurado:
+
+```sh
+npm test
+npm run test:integration
+```
+
+La prueba de integración requiere PostgreSQL y permiso para crear un esquema.
+Crea un esquema temporal exclusivo, carga los datos de prueba y lo elimina al
+terminar; no usa las tablas del esquema `public`. Comprueba las rutas HTTP,
+stock, saldo, presupuesto diario, cantidades inválidas, actualizaciones
+concurrentes, confirmación sin doble cobro y expiración sin navegador.
+
+Desde `frontend`, `npm run build` valida la compilación de producción.
+
+### Descripciones y nombre del comprador
+
+Toca la imagen, el nombre o **Ver qué lleva** para abrir el detalle del plato.
+Las descripciones del catálogo de demostración están en `PlatoCard.jsx`; pueden
+ajustarse allí a la receta del restaurante. Si la API incluye `descripcion`, se
+muestra ese contenido con prioridad.
+
+### Registro e inicio de sesión
+
+El menú y las descripciones se muestran sin iniciar sesión. Al pulsar **Hacer una reserva**
+o **Añadir a la Reserva**, se abre el formulario de acceso sobre el menú. Después de
+entrar o registrarse, se inicia la reserva y se añade el plato seleccionado, si lo había.
+Cerrar el formulario permite seguir explorando. El acceso del encabezado permite
+iniciar sesión sin crear una reserva automáticamente.
+
+La página permite crear una cuenta con nombre, nombre de usuario único y contraseña
+(de 8 a 128 caracteres), iniciar sesión y cerrar sesión. Cada alta recibe $100 de
+saldo mensual y $25 de presupuesto diario, fijados por el servidor. Iniciar sesión
+otra vez no recarga el saldo ni reinicia el gasto del día. Los usuarios comparten
+el inventario del restaurante, pero sus reservas y presupuestos son independientes.
+
+La reserva toma el nombre de la cuenta autenticada. El servidor ignora identificadores
+de usuario o nombres de comprador enviados por el cliente y comprueba la propiedad
+de cada reserva. Las contraseñas se guardan mediante scrypt con sal aleatoria.
+Las sesiones duran siete días, se guardan con token hasheado en PostgreSQL y usan
+una cookie HttpOnly/SameSite=Lax; cerrar sesión la revoca en el servidor.
+
+| Método | Ruta | Cuerpo |
+| --- | --- | --- |
+| POST | `/api/auth/registro` | `{ "nombre": "Ana Pérez", "nombreUsuario": "ana", "password": "una-clave-larga" }` |
+| POST | `/api/auth/ingresar` | `{ "nombreUsuario": "ana", "password": "una-clave-larga" }` |
+| GET | `/api/auth/sesion` | Usuario de la sesión actual |
+| POST | `/api/auth/salir` | Cerrar la sesión |
+
+Las rutas de reserva requieren la cookie de sesión. El catálogo sigue siendo público.
+Usar `http://localhost:5173` en desarrollo; `FRONTEND_URL` debe coincidir exactamente
+con el origen del navegador. La API permite credenciales solo para ese origen y
+rechaza escrituras con un origen distinto. En producción usar HTTPS y
+`NODE_ENV=production` para activar cookies Secure.
+
+### Actualizar una base existente
+
+Desde `backend`, ejecutar `npm run db:migrate` y reiniciar el servidor.
+Las migraciones añaden el nombre del comprador, los campos de acceso y las sesiones
+sin eliminar datos. Se pueden repetir. Una instalación nueva con `npm run db:setup`
+ya incluye estas estructuras.
+
+El usuario de demostración anterior y sus compras se conservan como datos históricos;
+no se le asigna una contraseña predeterminada. Las cuentas nuevas se crean desde
+la página y empiezan con sus propios límites. El registro no incluye recuperación
+de contraseña ni verificación de correo.
